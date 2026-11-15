@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tax AI — 세무 AI 업무 플랫폼</title>
+<meta name="description" content="세무 AI 업무 플랫폼 Tax AI — 계정으로 로그인하면 지정 서버에 자동 연결됩니다.">
+<style>
+/* ── 디자인 토큰 ─────────────────────────────────────────────
+   레이아웃: 스티키 상단바(브랜드+CTA) → 컴팩트 히어로 → 8직무 카드 그리드 → 3단계 이용법 → 푸터
+   컬러: 문서지(blue-tinted paper) + 잉크 네이비 + 업무 블루 액센트, 다크 모드 토큰 세트 동일 구조 */
+:root {
+  --bg: #f4f7fa;
+  --card: #ffffff;
+  --ink: #16283c;
+  --mut: #5b7085;
+  --brand: #1e5aa8;
+  --brand-strong: #174a8c;
+  --brand-soft: #e3edf9;
+  --line: #dde5ee;
+  --ok: #0b7a5c;
+  --err: #b3261e;
+  --shadow: 0 1px 2px rgba(22, 40, 60, .06), 0 6px 24px rgba(22, 40, 60, .07);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1826; --card: #16222f; --ink: #e6edf5; --mut: #93a6ba;
+    --brand: #6ba3e8; --brand-strong: #8fb9f0; --brand-soft: #1c3250;
+    --line: #26364a; --ok: #4fc49a; --err: #e5736c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1826; --card: #16222f; --ink: #e6edf5; --mut: #93a6ba;
+  --brand: #6ba3e8; --brand-strong: #8fb9f0; --brand-soft: #1c3250;
+  --line: #26364a; --ok: #4fc49a; --err: #e5736c;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; margin: 0; }
+html { color-scheme: light; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.65 "Noto Sans KR", -apple-system, "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", sans-serif;
+  margin: 0;
+}
+a { color: var(--brand); text-decoration: none; }
+.wrap {
+  max-width: 1020px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ── 상단바 ── */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar .wrap { display: flex; align-items: center; gap: 12px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: .01em; }
+.brand .mark {
+  width: 30px; height: 30px; border-radius: 8px; flex: none;
+  background: linear-gradient(150deg, var(--brand), #3d7fce);
+  color: #fff; display: grid; place-items: center;
+  font-size: 13px; font-weight: 900; letter-spacing: -.02em;
+}
+.brand small { font-weight: 500; color: var(--mut); font-size: 12px; margin-left: 2px; }
+.topbar .cta { margin-left: auto; }
+
+/* ── 버튼 ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 0; border-radius: 9px; cursor: pointer;
+  font: inherit; font-weight: 700; letter-spacing: -.01em;
+  padding: 11px 22px; white-space: nowrap;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.btn-primary { background: var(--brand); color: #fff; box-shadow: var(--shadow); }
+.btn-primary:hover { background: var(--brand-strong); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+.btn:focus-visible, input:focus-visible, a:focus-visible {
+  outline: 2px solid var(--brand); outline-offset: 2px;
+}
+.btn[disabled] { opacity: .6; cursor: wait; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn-primary, .btn-primary:hover { transition: none; transform: none; }
+}
+
+/* ── 히어로 ── */
+.hero { padding-block: 72px 56px; text-align: left; }
+.hero .eyebrow {
+  display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .12em;
+  color: var(--brand); background: var(--brand-soft);
+  padding: 5px 12px; border-radius: 999px; margin-bottom: 18px;
+}
+.hero h1 {
+  font-size: clamp(30px, 5.2vw, 44px); line-height: 1.25; font-weight: 900;
+  letter-spacing: -.02em; text-wrap: balance; max-width: 22em;
+}
+.hero h1 em { font-style: normal; color: var(--brand); }
+.hero p.lede {
+  margin-top: 16px; max-width: 36em; color: var(--mut); font-size: 16.5px;
+}
+.hero .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; align-items: center; }
+.hero .actions .btn { padding: 13px 28px; font-size: 16px; }
+.hero .note { color: var(--mut); font-size: 13px; }
+
+/* ── 업무 카드 ── */
+section { padding-block: 34px; }
+.sec-title { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.sec-title h2 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+.sec-title span { color: var(--mut); font-size: 13px; }
+.cards {
+  display: grid; gap: 12px; margin-top: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+}
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px 18px; min-width: 0;
+}
+.card.hl { border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); background: color-mix(in srgb, var(--brand-soft) 55%, var(--card)); }
+.card h3 { font-size: 15.5px; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+.card p { margin-top: 7px; color: var(--mut); font-size: 13.5px; line-height: 1.55; }
+.card .chip {
+  flex: none; font-size: 11px; font-weight: 700; color: #fff;
+  background: var(--brand); border-radius: 6px; padding: 2px 7px; letter-spacing: .02em;
+}
+.card.hl .chip { background: var(--brand-strong); }
+
+/* ── 이용 방법 ── */
+.steps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin-top: 18px; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+.step .no {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--brand-soft);
+  color: var(--brand); font-weight: 800; font-size: 13px;
+  display: grid; place-items: center; margin-bottom: 10px;
+}
+.step h3 { font-size: 15px; font-weight: 800; }
+.step p { margin-top: 6px; color: var(--mut); font-size: 13.5px; }
+
+/* ── 푸터 ── */
+footer { border-top: 1px solid var(--line); padding-block: 30px 46px; color: var(--mut); font-size: 13px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; }
+
+/* ── 로그인 모달 ── */
+#login {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(10, 20, 32, .55);
+  display: none; align-items: center; justify-content: center;
+  padding: 16px;
+}
+#login.open { display: flex; }
+#login .box {
+  width: min(370px, 100%); background: var(--card);
+  border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+  padding: 26px 24px 22px;
+}
+#login h2 { font-size: 18px; font-weight: 800; text-align: center; letter-spacing: -.01em; }
+#login .sub { text-align: center; color: var(--mut); font-size: 13px; margin-top: 5px; margin-bottom: 18px; }
+#login label { display: block; font-size: 13px; font-weight: 700; color: var(--mut); margin: 12px 0 5px; }
+#login input {
+  width: 100%; font: inherit; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+  padding: 11px 13px; outline: none;
+}
+#login input:focus { border-color: var(--brand); }
+#login .msg { min-height: 19px; font-size: 13px; margin-top: 11px; color: var(--err); text-wrap: balance; }
+#login .msg.waiting { color: var(--mut); }
+#login .msg.success { color: var(--ok); }
+#login .actions { margin-top: 14px; }
+#login .actions .btn { width: 100%; }
+#login .relink { display: none; margin-top: 12px; text-align: center; font-size: 14px; font-weight: 700; }
+#login .relink a { text-decoration: underline; }
+#login .close {
+  position: absolute; top: 12px; right: 14px; border: 0; background: none;
+  font: inherit; font-size: 18px; color: var(--mut); cursor: pointer; padding: 4px;
+}
+#login .box { position: relative; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="mark">TX</span>Tax AI<small>세무 AI 업무 플랫폼</small></div>
+    <button class="btn btn-primary cta" data-open-login>Tax AI 열기</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="hero">
+    <span class="eyebrow">세무 AI · 법령 DB 근거 검증</span>
+    <h1>세무 업무에<br><em>AI 전문가</em>를 붙이는 가장 빠른 방법</h1>
+    <p class="lede">AI 세법전문가 실시간 답변부터 검토서 작성, 해석례 검색까지 세무 업무 8종을
+       하나의 화면에서 처리합니다. 로그인하면 담당 계정의 지정 서버로 바로 연결됩니다.</p>
+    <div class="actions">
+      <button class="btn btn-primary" data-open-login>Tax AI 시작하기</button>
+      <span class="note">배정받은 계정(ID·비밀번호)이 있으면 바로 사용할 수 있습니다.</span>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-title"><h2>지원 업무</h2><span>업무 선택창에서 필요한 서류를 골라 제출하면 끝</span></div>
+    <div class="cards">
+      <div class="card hl">
+        <h3><span class="chip">빠른모드</span>AI 세법전문가</h3>
+        <p>질문하면 실시간 마크다운 답변. 인용된 법령 조문·사례를 국세법령 DB에서 검색해 「DB 근거 확인」까지 자동 첨부합니다.</p>
+      </div>
+      <div class="card"><h3>세무 이슈 검토서</h3><p>사실관계와 쟁점을 정리한 검토 문서를 작성합니다. 완성본은 .md·.docx로 내려받을 수 있습니다.</p></div>
+      <div class="card"><h3>해석례 비교 검색</h3><p>유사 사안의 해석례를 찾아 비교·정리해 줍니다.</p></div>
+      <div class="card"><h3>청구 이유서 작성</h3><p>부가가치세 등 세무 이슈 청구 이유서를 양식에 맞춰 작성합니다.</p></div>
+      <div class="card"><h3>유권 해석 질의서</h3><p>국세청 유권 해석 신청용 질의서를 체계적으로 구성합니다.</p></div>
+      <div class="card"><h3>업무 지침 검토서</h3><p>사내·기관 업무 지침의 세무 적합성을 검토합니다.</p></div>
+      <div class="card"><h3>고충 민원 신청서</h3><p>세무 고충민원 신청서를 쟁점 중심으로 작성합니다.</p></div>
+      <div class="card"><h3>나만의 지식 AI</h3><p>보유 자료를 지식 창고로 묶어 AI에게 물어봅니다.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title"><h2>이용 방법</h2><span>3단계, 처음 접속한 계정도 그대로 사용</span></div>
+    <div class="steps">
+      <div class="step"><div class="no">1</div><h3>계정으로 로그인</h3><p>[Tax AI] 버튼 → ID·비밀번호 입력. 계정마다 사용할 서버가 자동으로 지정되어 있습니다.</p></div>
+      <div class="step"><div class="no">2</div><h3>업무 선택·제출</h3><p>왼쪽 업무선택에서 골라 사실관계·질의를 입력, 파일·폴더를 첨부할 수도 있습니다.</p></div>
+      <div class="step"><div class="no">3</div><h3>결과 수령</h3><p>세법전문가는 즉시 답변, 검토서는 완성 후 .docx 다운로드. 텔레그램·이메일로 통지됩니다.</p></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Tax AI — 세무 AI 업무 플랫폼</span>
+    <span>계정 문의: 서비스 관리자</span>
+  </div>
+</footer>
+
+<!-- 로그인 모달 -->
+<div id="login" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="box">
+    <button class="close" data-close-login aria-label="닫기">✕</button>
+    <h2 id="loginTitle">Tax AI 로그인</h2>
+    <p class="sub">계정마다 접속할 서버가 지정되어 자동으로 연결됩니다.</p>
+    <form id="loginForm">
+      <label for="uid">ID</label>
+      <input id="uid" name="uid" type="text" autocomplete="username" required>
+      <label for="pw">비밀번호</label>
+      <input id="pw" name="pw" type="password" autocomplete="current-password" required>
+      <div class="msg" id="msg"></div>
+      <div class="relink" id="relink"><a id="relinkA" href="#" target="_blank" rel="noopener">여기를 클릭해 서버 열기 →</a></div>
+      <div class="actions"><button class="btn btn-primary" id="loginBtn" type="submit">로그인</button></div>
+    </form>
+  </div>
+</div>
+
+<script>
+// ── 로그인: Supabase users 검증 → users.Server 지정서버 분기 (웹서버 app.py와 동일 규칙) ──
+// 서버는 http라 https 페이지에서 직접 호출할 수 없어(혼합콘텐츠 차단), 검증은 Supabase(https)로 하고
+// 지정서버는 새 탭으로 연다. 새 탭의 app은 #a= 해시를 받아 세션까지 자동 생성한다(로그인 1회).
+const SUPABASE_URL = 'https://sfuglyadxjcojtmqhmll.supabase.co';
+const SUPABASE_KEY = ('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZi' +
+                      'I6InNmdWdseWFkeGpjb2p0bXFobWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxOTA3MTUs' +
+                      'ImV4cCI6MjA3NDc2NjcxNX0.tfr5ogGu1PDhf3FXWpckO0qGJquRm26I2VYmwIBwe3g');
+const DEFAULT_SERVER = 'http://134.185.114.30/taxai/';      // 서버① — Server 컬럼 미지정 계정의 기본 접속처
+const SUPER_IDS = new Set(['admin', 'ntscas@gmail.com']);   // 전체관리자 — 어디서든 접속(app.py SUPER_ADMINS 동일)
+
+const $ = id => document.getElementById(id);
+const msgEl = $('msg');
+
+document.querySelectorAll('[data-open-login]').forEach(b =>
+  b.addEventListener('click', () => { $('login').classList.add('open'); setTimeout(() => $('uid').focus(), 30); }));
+document.querySelectorAll('[data-close-login]').forEach(b =>
+  b.addEventListener('click', () => $('login').classList.remove('open')));
+$('login').addEventListener('click', e => { if (e.target === $('login')) $('login').classList.remove('open'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('login').classList.remove('open'); });
+
+// 유효기한·지정서버 판정 — app.py supabase_login·_server_redirect 동일 로직
+function serverUrlOf(sv, uid) {
+  if (!sv || SUPER_IDS.has(uid)) return DEFAULT_SERVER;
+  if (!/:\/\//.test(sv)) sv = 'http://' + sv;               // IP만 입력 → http 보장
+  try { const u = new URL(sv); if (!u.hostname) return DEFAULT_SERVER;
+        return (u.pathname && u.pathname !== '/') ? (sv.endsWith('/') ? sv : sv + '/') : u.origin + '/taxai/';
+  } catch (e) { return DEFAULT_SERVER; }
+}
+
+async function validate(uid, pw) {
+  const q = SUPABASE_URL + '/rest/v1/users?' +
+    new URLSearchParams({ID: 'eq.' + uid, Password: 'eq.' + pw,
+                         select: 'ID,date,role,company,Server'}).toString() + '&limit=1';
+  const r = await fetch(q, {headers: {apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY}});
+  if (!r.ok) throw new Error('검증 서버 통신 오류 (상태 ' + r.status + ')');
+  const rows = await r.json();
+  if (!rows.length) return {ok: false, msg: '아이디 또는 비밀번호가 일치하지 않습니다.'};
+  const row = rows[0];
+  const exp = String(row.date || '').replace(/[-/.]/g, '');
+  if (exp.length >= 8) {
+    const y = +exp.slice(0, 4), m = +exp.slice(4, 6), d = +exp.slice(6, 8);
+    if (y > 1900 && Date.now() > new Date(y, m - 1, d).getTime())
+      return {ok: false, msg: '사용기한이 만료되었습니다. (유효기한: ' + y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0') + ')'};
+  }
+  return {ok: true, server: serverUrlOf(String(row.Server || '').trim(), uid)};
+}
+
+// "uid␞pw"를 base64url로 — 새 탭 app의 #a 해시 인계용(app.py 해시 파서와 쌍)
+function b64url(s) {
+  let bin = '';
+  new TextEncoder().encode(s).forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const uid = $('uid').value.trim(), pw = $('pw').value;
+  $('relink').hidden = true;
+  msgEl.className = 'msg waiting';
+  msgEl.textContent = '계정을 확인하는 중...';
+  $('loginBtn').disabled = true;
+  try {
+    const res = await validate(uid, pw);
+    if (!res.ok) { msgEl.className = 'msg'; msgEl.textContent = res.msg; return; }
+    const url = res.server + (res.server.includes('?') ? '&' : '?') + 'freshlogin=1' + '#a=' + b64url(uid + '\x1e' + pw);
+    const w = window.open(url, '_blank');               // 새 탭 — 이 창(주소표시줄)은 그대로 유지
+    if (w) {
+      msgEl.className = 'msg success';
+      msgEl.textContent = '지정 서버를 새 탭으로 열었습니다. 이 창은 그대로 둬도 됩니다.';
+      setTimeout(() => { $('login').classList.remove('open'); msgEl.textContent = ''; }, 1600);
+    } else {                                            // 팝업 차단 시 — 직접 열 링크 제시
+      msgEl.className = 'msg';
+      msgEl.textContent = '팝업이 차단되어 자동으로 열지 못했습니다.';
+      $('relinkA').href = url;
+      $('relink').hidden = false;
+    }
+  } catch (err) {
+    msgEl.className = 'msg';
+    msgEl.textContent = err.message || '계정 확인 중 오류가 발생했습니다.';
+  } finally {
+    $('loginBtn').disabled = false;
+  }
+});
+</script>
+</body>
+</html>
