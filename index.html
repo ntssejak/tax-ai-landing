@@ -348,6 +348,10 @@ function openOrAssign(url) {
 //    재방문 시 입력 없이 서버로 진입.
 //    푸터 "자동 로그인 해제" 링크로 저장 자격을 지우고 랜딩에 머물 수 있다. ──
 (async function tryAuto() {
+  // 앱이 세션 만료·다른 기기 로그인·수동 로그아웃으로 되돌려 보낼 때(?out=1)는 자동 재로그인을
+  // 하지 않는다 — 로그아웃 상태라면 [Tax AI 시작하기]·로그인 버튼을 누를 때까지 이 페이지에 머문다.
+  // (새 로그인이 서버의 계정당 1세션 정책으로 다른 기기 세션을 파기해 상호 끊기는 문제 방지)
+  try { if (new URLSearchParams(location.search).get('out')) return; } catch (e) { }
   let save = '';
   try { save = localStorage.getItem('taxai_save') || ''; } catch (e) { return; }
   if (!save) return;
