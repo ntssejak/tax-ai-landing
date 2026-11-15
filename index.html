@@ -246,7 +246,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
   <div class="wrap">
     <span>Tax AI — 세무 AI 업무 플랫폼</span>
     <span>계정 문의: 서비스 관리자</span>
-    <span><a id="autologin" href="javascript:void(0)" style="color:inherit;text-decoration:underline" onclick="clearAutoLogin()">자동 로그인 해제</a></span>
+    <span><a id="autologin" href="javascript:void(0)" style="color:inherit;text-decoration:underline" onclick="clearAutoLogin()">저장 로그인 삭제</a></span>
   </div>
 </footer>
 
@@ -284,11 +284,15 @@ const msgEl = $('msg');
 
 document.querySelectorAll('[data-open-login]').forEach(b =>
   // 모달 열기 — programmatic focus는 Android WebView에서 IME 상태를 어긋나게 해 첫 탭 입력이
-  // 안 되는 실측 문제가 있어 하지 않고, 직전 사용 아이디를 채워 둔다.
+  // 안 되는 실측 문제가 있어 하지 않고, 직전 로그인 자격을 미리 채워 둔다(버튼 클릭한 로그인 전용).
   b.addEventListener('click', () => {
     $('login').classList.add('open');
-    try { const v = localStorage.getItem('taxai_last_uid') || localStorage.getItem('taxai_lp') || '';
-          if (v) $('uid').value = v; } catch (e) { }
+    try { const s = localStorage.getItem('taxai_save');
+          if (s) { const t = fromB64url(s).split('\x1e');   // 저장 자격 — ID·비밀번호 미리채우기
+                   if (t[0]) $('uid').value = t[0];
+                   if (t[1]) $('pw').value = t[1]; }
+          else { const v = localStorage.getItem('taxai_last_uid') || localStorage.getItem('taxai_lp') || '';
+          if (v) $('uid').value = v; } } catch (e) { }
   }));
 document.querySelectorAll('[data-close-login]').forEach(b =>
   b.addEventListener('click', () => $('login').classList.remove('open')));
@@ -334,46 +338,15 @@ function fromB64url(s) {
   return new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
 }
 
-// 앱(WebView)에서는 주입된 window.open 훅(브리지 TaxAI.open)으로 전환해야 분기 후 15초 hold가
-// 걸린다 — location.assign 직행은 hold 없이 서버로 가고, 해시 자동로그인 완료 전 로그인 폴링 공백에
-// 앱이 랜딩으로 되돌려 왕복 새로고침 반복이 됨(실측 2026-11-15). 일반 브라우저는 같은 탭 이동.
-function openOrAssign(url) {
-  if (window.__taiHook) {                          // APK — window.open 훅으로 전환(브리지·hold)
-    try { window.open(url, '_blank'); return; } catch (e) { }
-  }
-  location.assign(url);                            // 일반 브라우저 — 같은 탭(팝업 차단 영향 없음)
-}
-
-// ── 자동 로그인: 이 기기(localStorage, 이 페이지에만 보임)에 저장한 마지막 로그인 자격으로
-//    재방문 시 입력 없이 서버로 진입.
-//    푸터 "자동 로그인 해제" 링크로 저장 자격을 지우고 랜딩에 머물 수 있다. ──
-(async function tryAuto() {
-  // 앱이 세션 만료·다른 기기 로그인·수동 로그아웃으로 되돌려 보낼 때(?out=1)는 자동 재로그인을
-  // 하지 않는다 — 로그아웃 상태라면 [Tax AI 시작하기]·로그인 버튼을 누를 때까지 이 페이지에 머문다.
-  // (새 로그인이 서버의 계정당 1세션 정책으로 다른 기기 세션을 파기해 상호 끊기는 문제 방지)
-  try { if (new URLSearchParams(location.search).get('out')) return; } catch (e) { }
-  let save = '';
-  try { save = localStorage.getItem('taxai_save') || ''; } catch (e) { return; }
-  if (!save) return;
-  try {
-    const txt = fromB64url(save).split('\x1e');
-    const res = await validate(txt[0], txt[1]);
-    if (res.ok) {
-      msgEl.className = 'msg waiting';
-      msgEl.textContent = '이전 로그인으로 이어서 연결합니다…';
-      const url = res.server + (res.server.includes('?') ? '&' : '?') + 'freshlogin=1' +
-                  '#a=' + b64url(txt[0] + '\x1e' + txt[1]);
-      openOrAssign(url);                            // 앱=브리지(hold) · 브라우저=같은 탭
-      return;
-    }
-    try { localStorage.removeItem('taxai_save'); } catch (e2) { }   // 만료·계정 변경 — 폐기 후 수동 로그인
-  } catch (e) { }                                     // 통신 오류 — 조용히 랜딩에 머문다
-})();
+// 자동 로그인(방문 시 자격 재로그인)은 폐지 — 로그인은 [Tax AI 시작하기]·로그인 버튼을 눌러
+// 로그인창에서 직접 할 때만 발생한다. 방문마다 자동 로그인이 서버의 계정당 1세션 정책을 타고
+// 다른 기기(PC·앱)의 세션을 계속 파기해 상호 끊기는 실측 문제(2026-11-15).
+// 저장 자격(taxai_save)은 로그인창 ID·비밀번호 미리채우기로만 쓴다.
 
 function clearAutoLogin() {
   try { localStorage.removeItem('taxai_save'); } catch (e) { }
   const el = document.getElementById('autologin');
-  if (el) el.textContent = '자동 로그인 해제 완료';
+  if (el) el.textContent = '저장된 로그인 삭제 완료';
 }
 
 $('loginForm').addEventListener('submit', async e => {
@@ -387,7 +360,7 @@ $('loginForm').addEventListener('submit', async e => {
     const res = await validate(uid, pw);
     if (!res.ok) { msgEl.className = 'msg'; msgEl.textContent = res.msg; return; }
     try { localStorage.setItem('taxai_lp', uid);
-          localStorage.setItem('taxai_save', b64url(uid + '\x1e' + pw)); } catch (e) { }   // 직전 아이디·자격 기억(재방문 자동 로그인)
+          localStorage.setItem('taxai_save', b64url(uid + '\x1e' + pw)); } catch (e) { }   // 직전 자격 기억(로그인창 미리채우기용)
     const url = res.server + (res.server.includes('?') ? '&' : '?') + 'freshlogin=1' + '#a=' + b64url(uid + '\x1e' + pw);
     const w = window.open(url, '_blank');               // 새 탭 — 이 창(주소표시줄)은 그대로 유지
     if (w) {
