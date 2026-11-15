@@ -234,7 +234,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
   <section>
     <div class="sec-title"><h2>이용 방법</h2><span>3단계, 처음 접속한 계정도 그대로 사용</span></div>
     <div class="steps">
-      <div class="step"><div class="no">1</div><h3>계정으로 로그인</h3><p>[Tax AI] 버튼 → ID·비밀번호 입력. 계정마다 사용할 서버가 자동으로 지정되어 있습니다.</p></div>
+      <div class="step"><div class="no">1</div><h3>계정으로 로그인</h3><p>[Tax AI] 버튼 → 저장된 로그인이 있으면 클릭만으로 연결, 없으면 ID·비밀번호 입력. 계정마다 사용할 서버가 자동으로 지정되어 있습니다.</p></div>
       <div class="step"><div class="no">2</div><h3>업무 선택·제출</h3><p>왼쪽 업무선택에서 골라 사실관계·질의를 입력, 파일·폴더를 첨부할 수도 있습니다.</p></div>
       <div class="step"><div class="no">3</div><h3>결과 수령</h3><p>세법전문가는 즉시 답변, 검토서는 완성 후 .docx 다운로드. 텔레그램·이메일로 통지됩니다.</p></div>
     </div>
@@ -282,18 +282,44 @@ const SUPER_IDS = new Set(['admin', 'ntscas@gmail.com']);   // 전체관리자 �
 const $ = id => document.getElementById(id);
 const msgEl = $('msg');
 
+// [Tax AI 시작하기]·로그인 버튼 — 로그인이 일어나는 유일한 트리거는 이 버튼 클릭이다.
+// 저장된 로그인 자격(taxai_save)이 있으면 즉시 검증해 지정 서버로 분기(입력 없음)하고,
+// 없거나 만료·불일치면 로그인창을 열어 암호를 입력받는다(요구 확정, 2026-11-15).
+// 페이지 로드 시에는 아무것도 하지 않는다 — 방문마다 자기 자격 재로그인이 서버의 계정당
+// 1세션 정책으로 다른 기기(PC·앱) 세션을 파기해 상호 끊기는 문제의 근본 차단.
+// 앱(WebView)에서는 클릭 시점에 window.open 훅이 이미 주입돼 있어 브리지(hold 15초) 경유.
+async function startTaxAI() {
+  let save = '';
+  try { save = localStorage.getItem('taxai_save') || ''; } catch (e) { }
+  if (save) {
+    try {
+      const t = fromB64url(save).split('\x1e');
+      $('login').classList.add('open');                    // 진행 표시(프로그램 포커스 없음 — first-tap 함정 회피)
+      $('uid').value = t[0]; $('pw').value = '';
+      msgEl.className = 'msg waiting';
+      msgEl.textContent = '이전 로그인으로 이어서 연결합니다…';
+      const res = await validate(t[0], t[1]);
+      if (res.ok) {
+        const url = res.server + (res.server.includes('?') ? '&' : '?') + 'freshlogin=1' +
+                    '#a=' + b64url(t[0] + '\x1e' + t[1]);
+        window.open(url, '_blank');                        // 앱=브리지 훅(hold) · 브라우저=새 탭
+        msgEl.className = 'msg success';
+        msgEl.textContent = '지정 서버를 새 탭으로 열었습니다. 이 창은 그대로 둬도 됩니다.';
+        setTimeout(() => { $('login').classList.remove('open'); msgEl.textContent = ''; }, 1600);
+        return;
+      }
+      try { localStorage.removeItem('taxai_save'); } catch (e2) { }   // 만료·변경 — 폐기 후 직접 입력
+      msgEl.className = 'msg';
+      msgEl.textContent = '저장된 로그인이 만료되어 직접 입력이 필요합니다.';
+      return;
+    } catch (e) { /* 통신 오류 등 — 일반 로그인창으로 */ }
+  }
+  $('login').classList.add('open');
+  try { const v = localStorage.getItem('taxai_last_uid') || localStorage.getItem('taxai_lp') || '';
+        if (v) $('uid').value = v; } catch (e2) { }
+}
 document.querySelectorAll('[data-open-login]').forEach(b =>
-  // 모달 열기 — programmatic focus는 Android WebView에서 IME 상태를 어긋나게 해 첫 탭 입력이
-  // 안 되는 실측 문제가 있어 하지 않고, 직전 로그인 자격을 미리 채워 둔다(버튼 클릭한 로그인 전용).
-  b.addEventListener('click', () => {
-    $('login').classList.add('open');
-    try { const s = localStorage.getItem('taxai_save');
-          if (s) { const t = fromB64url(s).split('\x1e');   // 저장 자격 — ID·비밀번호 미리채우기
-                   if (t[0]) $('uid').value = t[0];
-                   if (t[1]) $('pw').value = t[1]; }
-          else { const v = localStorage.getItem('taxai_last_uid') || localStorage.getItem('taxai_lp') || '';
-          if (v) $('uid').value = v; } } catch (e) { }
-  }));
+  b.addEventListener('click', startTaxAI));
 document.querySelectorAll('[data-close-login]').forEach(b =>
   b.addEventListener('click', () => $('login').classList.remove('open')));
 $('login').addEventListener('click', e => { if (e.target === $('login')) $('login').classList.remove('open'); });
@@ -338,10 +364,9 @@ function fromB64url(s) {
   return new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
 }
 
-// 자동 로그인(방문 시 자격 재로그인)은 폐지 — 로그인은 [Tax AI 시작하기]·로그인 버튼을 눌러
-// 로그인창에서 직접 할 때만 발생한다. 방문마다 자동 로그인이 서버의 계정당 1세션 정책을 타고
-// 다른 기기(PC·앱)의 세션을 계속 파기해 상호 끊기는 실측 문제(2026-11-15).
-// 저장 자격(taxai_save)은 로그인창 ID·비밀번호 미리채우기로만 쓴다.
+// 저장 자격(taxai_save)은 [Tax AI 시작하기]·로그인 버튼 클릭 시 즉시 분기(startTaxAI)와
+// 로그인 실패 후 재입력용으로만 쓴다. 방문 시 자동 로그인은 폐지 — 방문마다 자기 자격
+// 재로그인이 서버의 계정당 1세션 정책으로 다른 기기 세션을 계속 파기(실측 2026-11-15).
 
 function clearAutoLogin() {
   try { localStorage.removeItem('taxai_save'); } catch (e) { }
