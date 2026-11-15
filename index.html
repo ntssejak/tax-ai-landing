@@ -284,7 +284,9 @@ function serverUrlOf(sv, uid) {
   if (!sv || SUPER_IDS.has(uid)) return DEFAULT_SERVER;
   if (!/:\/\//.test(sv)) sv = 'http://' + sv;               // IP만 입력 → http 보장
   try { const u = new URL(sv); if (!u.hostname) return DEFAULT_SERVER;
-        return (u.pathname && u.pathname !== '/') ? (sv.endsWith('/') ? sv : sv + '/') : u.origin + '/taxai/';
+        // app.py와 동일: 스킴 뒤에 경로가 있으면 그대로 유지(없으면 /taxai/ 추가)
+        const pi = sv.indexOf('/', sv.indexOf('://') + 3);
+        return pi > 0 ? (sv.endsWith('/') ? sv : sv + '/') : u.origin + '/taxai/';
   } catch (e) { return DEFAULT_SERVER; }
 }
 
