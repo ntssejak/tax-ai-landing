@@ -198,7 +198,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
     <span class="eyebrow">세무 AI · 법령 DB 근거 검증</span>
     <h1>세무 업무에<br><em>AI 전문가</em>를 붙이는 가장 빠른 방법</h1>
     <p class="lede">AI 세법전문가 실시간 답변부터 검토서 작성, 해석례 검색까지 세무 업무 8종을
-       하나의 화면에서 처리합니다. 로그인하면 담당 계정의 지정 서버로 바로 연결됩니다.</p>
+       하나의 화면에서 처리합니다.</p>
     <div class="actions">
       <button class="btn btn-primary" data-open-login>Tax AI 시작하기</button>
       <span class="note">배정받은 계정(ID·비밀번호)이 있으면 바로 사용할 수 있습니다.</span>
@@ -214,9 +214,9 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
       </div>
       <div class="card"><h3>세무 이슈 검토서</h3><p>사실관계와 쟁점을 정리한 검토 문서를 작성합니다. 완성본은 .md·.docx로 내려받을 수 있습니다.</p></div>
       <div class="card"><h3>해석례 비교 검색</h3><p>유사 사안의 해석례를 찾아 비교·정리해 줍니다.</p></div>
-      <div class="card"><h3>청구 이유서 작성</h3><p>경정청구, 이의신청, 심사청구, 심판청구의 청구 이유서를 양식에 맞춰 작성합니다.</p></div>
+      <div class="card"><h3>청구 이유서 작성</h3><p>경정청구, 심판청구 등의 청구 이유서를 양식에 맞춰 작성합니다.</p></div>
       <div class="card"><h3>유권 해석 질의서</h3><p>국세청 유권 해석 신청용 질의서를 체계적으로 구성합니다.</p></div>
-      <div class="card"><h3>업무 지침 검토서</h3><p>국세청의 업무처리지침등을 검색하고 검토서를 작성합니다.</p></div>
+      <div class="card"><h3>업무 지침 검토서</h3><p>국세청의 업무 지침을 검색하고 검토합니다.</p></div>
       <div class="card"><h3>고충 민원 신청서</h3><p>세무 고충민원 신청서를 쟁점 중심으로 작성합니다.</p></div>
       <div class="card"><h3>나만의 지식 AI</h3><p>보유 자료를 지식 창고로 묶어 AI에게 물어봅니다.</p></div>
     </div>
@@ -273,7 +273,13 @@ const $ = id => document.getElementById(id);
 const msgEl = $('msg');
 
 document.querySelectorAll('[data-open-login]').forEach(b =>
-  b.addEventListener('click', () => { $('login').classList.add('open'); setTimeout(() => $('uid').focus(), 30); }));
+  // 모달 열기 — programmatic focus는 Android WebView에서 IME 상태를 어긋나게 해 첫 탭 입력이
+  // 안 되는 실측 문제가 있어 하지 않고, 직전 사용 아이디를 채워 둔다.
+  b.addEventListener('click', () => {
+    $('login').classList.add('open');
+    try { const v = localStorage.getItem('taxai_last_uid') || localStorage.getItem('taxai_lp') || '';
+          if (v) $('uid').value = v; } catch (e) { }
+  }));
 document.querySelectorAll('[data-close-login]').forEach(b =>
   b.addEventListener('click', () => $('login').classList.remove('open')));
 $('login').addEventListener('click', e => { if (e.target === $('login')) $('login').classList.remove('open'); });
@@ -325,6 +331,7 @@ $('loginForm').addEventListener('submit', async e => {
   try {
     const res = await validate(uid, pw);
     if (!res.ok) { msgEl.className = 'msg'; msgEl.textContent = res.msg; return; }
+    try { localStorage.setItem('taxai_lp', uid); } catch (e) { }    // 직전 아이디 기억(모달 prefill용)
     const url = res.server + (res.server.includes('?') ? '&' : '?') + 'freshlogin=1' + '#a=' + b64url(uid + '\x1e' + pw);
     const w = window.open(url, '_blank');               // 새 탭 — 이 창(주소표시줄)은 그대로 유지
     if (w) {
