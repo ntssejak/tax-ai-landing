@@ -334,8 +334,18 @@ function fromB64url(s) {
   return new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
 }
 
+// 앱(WebView)에서는 주입된 window.open 훅(브리지 TaxAI.open)으로 전환해야 분기 후 15초 hold가
+// 걸린다 — location.assign 직행은 hold 없이 서버로 가고, 해시 자동로그인 완료 전 로그인 폴링 공백에
+// 앱이 랜딩으로 되돌려 왕복 새로고침 반복이 됨(실측 2026-11-15). 일반 브라우저는 같은 탭 이동.
+function openOrAssign(url) {
+  if (window.__taiHook) {                          // APK — window.open 훅으로 전환(브리지·hold)
+    try { window.open(url, '_blank'); return; } catch (e) { }
+  }
+  location.assign(url);                            // 일반 브라우저 — 같은 탭(팝업 차단 영향 없음)
+}
+
 // ── 자동 로그인: 이 기기(localStorage, 이 페이지에만 보임)에 저장한 마지막 로그인 자격으로
-//    재방문 시 입력 없이 서버로 진입. window.open은 사용자 클릭 없이는 차단되므로 같은 탭 이동.
+//    재방문 시 입력 없이 서버로 진입.
 //    푸터 "자동 로그인 해제" 링크로 저장 자격을 지우고 랜딩에 머물 수 있다. ──
 (async function tryAuto() {
   let save = '';
@@ -349,7 +359,7 @@ function fromB64url(s) {
       msgEl.textContent = '이전 로그인으로 이어서 연결합니다…';
       const url = res.server + (res.server.includes('?') ? '&' : '?') + 'freshlogin=1' +
                   '#a=' + b64url(txt[0] + '\x1e' + txt[1]);
-      location.assign(url);                           // 같은 탭 이동(팝업 차단 영향 없음)
+      openOrAssign(url);                            // 앱=브리지(hold) · 브라우저=같은 탭
       return;
     }
     try { localStorage.removeItem('taxai_save'); } catch (e2) { }   // 만료·계정 변경 — 폐기 후 수동 로그인
