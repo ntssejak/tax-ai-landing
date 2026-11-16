@@ -151,21 +151,21 @@ section { padding-block: 12px; }   /* 지원업무·이용방법 등 단락 위�
 footer { border-top: 1px solid var(--line); padding-block: 30px 46px; color: var(--mut); font-size: 13px; }
 footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; }
 
-/* ── 로그인 모달 ── */
-#login {
+/* ── 로그인·할루시네이션 검토 모달 ── */
+#login, #halu {
   position: fixed; inset: 0; z-index: 50;
   background: rgba(10, 20, 32, .55);
   display: none; align-items: center; justify-content: center;
   padding: 16px;
 }
-#login.open { display: flex; }
-#login .box {
+#login.open, #halu.open { display: flex; }
+#login .box, #halu .box {
   width: min(370px, 100%); background: var(--card);
   border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
   padding: 26px 24px 22px;
 }
-#login h2 { font-size: 18px; font-weight: 800; text-align: center; letter-spacing: -.01em; }
-#login .sub { text-align: center; color: var(--mut); font-size: 13px; margin-top: 5px; margin-bottom: 18px; }
+#login h2, #halu h2 { font-size: 18px; font-weight: 800; text-align: center; letter-spacing: -.01em; }
+#login .sub, #halu .sub { text-align: center; color: var(--mut); font-size: 13px; margin-top: 5px; margin-bottom: 18px; }
 #login label { display: block; font-size: 13px; font-weight: 700; color: var(--mut); margin: 12px 0 5px; }
 #login input {
   width: 100%; font: inherit; color: var(--ink);
@@ -173,18 +173,21 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
   padding: 11px 13px; outline: none;
 }
 #login input:focus { border-color: var(--brand); }
-#login .msg { min-height: 19px; font-size: 13px; margin-top: 11px; color: var(--err); text-wrap: balance; }
+#login .msg, #halu .msg { min-height: 19px; font-size: 13px; margin-top: 11px; color: var(--err); text-wrap: balance; }
 #login .msg.waiting { color: var(--mut); }
 #login .msg.success { color: var(--ok); }
 #login .actions { margin-top: 14px; }
 #login .actions .btn { width: 100%; }
 #login .relink { display: none; margin-top: 12px; text-align: center; font-size: 14px; font-weight: 700; }
 #login .relink a { text-decoration: underline; }
-#login .close {
+#login .close, #halu .close {
   position: absolute; top: 12px; right: 14px; border: 0; background: none;
   font: inherit; font-size: 18px; color: var(--mut); cursor: pointer; padding: 4px;
 }
-#login .box { position: relative; }
+#login .box, #halu .box { position: relative; }
+/* 할루 검토 모달 — 서버 선택 버튼 목록 */
+#halu .svr { display: grid; gap: 8px; margin-top: 16px; }
+#halu .svr .btn { width: 100%; font-size: 14px; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -208,6 +211,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
     <p class="lede">어떠한 경우에도 첨부된 파일이나 폴더,쟁점 등이 공개된 AI서버나 클라우드에 보관되지 않고 전송되지도 않습니다.</p>
     <div class="actions">
       <button class="btn btn-primary" data-open-login>Tax AI 시작하기</button>
+      <button class="btn" data-open-halu>🔍 할루시네이션 검토</button>
       <a class="btn" href="mailto:ntssejak@gmail.com" style="border:1px solid var(--line);color:var(--fg);text-decoration:none">✉️ 문의사항 이메일 보내기</a>
       <span class="note">배정받은 계정(ID·비밀번호)이 있으면 바로 사용할 수 있습니다.</span>
     </div>
@@ -229,6 +233,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
       <div class="card"><h3>업무 지침 검토서</h3><p>국세청의 업무 지침을 검색하고 검토합니다.</p></div>
       <div class="card"><h3>고충 민원 신청서</h3><p>세무 고충민원 신청서를 쟁점 중심으로 작성합니다.</p></div>
       <div class="card"><h3>나만의 지식 AI</h3><p>보유 자료를 지식 창고로 묶어 AI에게 물어봅니다.</p></div>
+      <div class="card"><h3>할루시네이션 검토</h3><p>문서에 인용된 법령 조문·문서번호를 법령DB·AI_Taxpert DB·국가법령정보시스템에서 대조해 검증 보고서를 만듭니다.</p></div>
     </div>
   </section>
 
@@ -269,6 +274,23 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
   </div>
 </div>
 
+<!-- 할루시네이션 검토 모달 — 서버 선택 -->
+<div id="halu" role="dialog" aria-modal="true" aria-labelledby="haluTitle">
+  <div class="box">
+    <button class="close" data-close-halu aria-label="닫기">✕</button>
+    <h2 id="haluTitle">할루시네이션 검토</h2>
+    <p class="sub">파일을 첨부해 인용 근거(법령 조문·문서번호)를 검증합니다. 접속할 서버를 선택하세요.</p>
+    <div class="svr">
+      <button class="btn btn-primary" data-halu="auto" style="display:none">내 계정 지정 서버로 열기</button>
+      <button class="btn" data-halu="1">서버1 (134.185.114.30)</button>
+      <button class="btn" data-halu="2">서버2 (144.24.0.157)</button>
+      <button class="btn" data-halu="3">서버3 (132.226.103.149)</button>
+      <button class="btn" data-halu="4">서버4 (나스 192.168.35.135)</button>
+    </div>
+    <div class="msg" id="haluMsg"></div>
+  </div>
+</div>
+
 <script>
 // ── 로그인: Supabase users 검증 → users.Server 지정서버 분기 (웹서버 app.py와 동일 규칙) ──
 // 서버는 http라 https 페이지에서 직접 호출할 수 없어(혼합콘텐츠 차단), 검증은 Supabase(https)로 하고
@@ -279,6 +301,12 @@ const SUPABASE_KEY = ('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
                       'ImV4cCI6MjA3NDc2NjcxNX0.tfr5ogGu1PDhf3FXWpckO0qGJquRm26I2VYmwIBwe3g');
 const DEFAULT_SERVER = 'http://134.185.114.30/taxai/';      // 서버① — Server 컬럼 미지정 계정의 기본 접속처
 const SUPER_IDS = new Set(['admin', 'ntscas@gmail.com']);   // 전체관리자 — 어디서든 접속(app.py SUPER_ADMINS 동일)
+
+// ── 할루시네이션 검토: 서버별 전용 페이지(/halu) 주소 ──
+const HALU_SERVERS = { '1': 'http://134.185.114.30/taxai/halu',
+                       '2': 'http://144.24.0.157:8081/halu',
+                       '3': 'http://132.226.103.149:8081/halu',
+                       '4': 'http://192.168.35.135:8081/halu' };
 
 const $ = id => document.getElementById(id);
 const msgEl = $('msg');
@@ -406,6 +434,42 @@ $('loginForm').addEventListener('submit', async e => {
     $('loginBtn').disabled = false;
   }
 });
+
+// ── 할루시네이션 검토 모달 ──
+// 저장된 로그인(taxai_save)이 있으면 [내 계정 지정 서버로 열기]를 보여주고,
+// 서버 버튼 클릭 시 해당 서버의 /halu 페이지를 새 탭으로 연다. auto는 로그인 분기와
+// 동일하게 Supabase 검증 → 지정서버(app.py serverUrlOf 규칙) 뒤에 /halu를 붙여 연다.
+const hmsg = $('haluMsg');
+document.querySelectorAll('[data-open-halu]').forEach(b => b.addEventListener('click', async () => {
+  hmsg.textContent = '';
+  let save = '';
+  try { save = localStorage.getItem('taxai_save') || ''; } catch (e) { }
+  document.querySelector('[data-halu="auto"]').style.display = save ? '' : 'none';
+  $('halu').classList.add('open');
+}));
+document.querySelectorAll('[data-close-halu]').forEach(b =>
+  b.addEventListener('click', () => $('halu').classList.remove('open')));
+$('halu').addEventListener('click', e => { if (e.target === $('halu')) $('halu').classList.remove('open'); });
+document.querySelectorAll('[data-halu]').forEach(b => b.addEventListener('click', async () => {
+  const k = b.getAttribute('data-halu');
+  if (k !== 'auto') { window.open(HALU_SERVERS[k], '_blank'); return; }
+  b.disabled = true;
+  hmsg.className = 'msg waiting';
+  hmsg.textContent = '계정을 확인하는 중…';
+  try {
+    const t = fromB64url(localStorage.getItem('taxai_save') || '').split('\x1e');
+    const res = await validate(t[0], t[1]);
+    if (!res.ok) { hmsg.className = 'msg'; hmsg.textContent = res.msg; b.disabled = false; return; }
+    window.open(res.server + 'halu', '_blank');     // res.server는 끝이 '/'로 보장됨
+    hmsg.className = 'msg success';
+    hmsg.textContent = '지정 서버를 새 탭으로 열었습니다.';
+    setTimeout(() => { $('halu').classList.remove('open'); hmsg.textContent = ''; b.disabled = false; }, 1400);
+  } catch (e) {
+    hmsg.className = 'msg';
+    hmsg.textContent = e.message || '계정 확인 중 오류가 발생했습니다.';
+    b.disabled = false;
+  }
+}));
 </script>
 </body>
 </html>
