@@ -273,17 +273,28 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: s
 
 <script>
 // ── 로그인: Supabase users 검증 → users.Server 지정서버 분기 (웹서버 app.py와 동일 규칙) ──
-// 서버는 http라 https 페이지에서 직접 호출할 수 없어(혼합콘텐츠 차단), 검증은 Supabase(https)로 하고
-// 지정서버는 새 탭으로 연다. 새 탭의 app은 #a= 해시를 받아 세션까지 자동 생성한다(로그인 1회).
+// 검증은 Supabase(https)로 하고 지정서버는 새 탭으로 연다. 매핑된 서버는 랜딩 프록시 경로
+// (/sN/, https)로 열어 주소창에 서버 주소가 노출되지 않게 한다(2026-11-17).
+// 새 탭의 app은 #a= 해시를 받아 세션까지 자동 생성한다(로그인 1회).
 const SUPABASE_URL = 'https://sfuglyadxjcojtmqhmll.supabase.co';
 const SUPABASE_KEY = ('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZi' +
                       'I6InNmdWdseWFkeGpjb2p0bXFobWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxOTA3MTUs' +
                       'ImV4cCI6MjA3NDc2NjcxNX0.tfr5ogGu1PDhf3FXWpckO0qGJquRm26I2VYmwIBwe3g');
-const DEFAULT_SERVER = 'http://134.185.114.30/taxai/';      // 서버① — Server 컬럼 미지정 계정의 기본 접속처
+// 지정서버는 Vercel 에지 프록시 경로(https://dctaxai.vercel.app/sN/)로 열어 주소창에
+// 서버 주소가 노출되지 않게 한다(2026-11-17 요구 — vercel.json /s1~/s5 rewrite 대응).
+// 프록시는 https라 GitHub Pages(https)의 혼합콘텐츠 문제도 없음. 미매핑 호스트만 원 주소로.
+const PORTAL = 'https://dctaxai.vercel.app';               // 서버① — Server 컬럼 미지정 계정의 기본 접속처
+const PROXY_PATHS = {
+  '134.185.114.30': PORTAL + '/s1/',
+  '144.24.0.157:8081': PORTAL + '/s2/',
+  '132.226.103.149:8081': PORTAL + '/s3/',
+  '132.226.103.149:8443': PORTAL + '/s4/',
+  '132.226.103.149:8444': PORTAL + '/s5/'
+};
 const SUPER_IDS = new Set(['admin', 'ntscas@gmail.com']);   // 전체관리자 — 어디서든 접속(app.py SUPER_ADMINS 동일)
 
 // ── 할루시네이션 검토: 서버① 고정 — 로그인 없이 바로 전용 페이지(/halu) 새 탭 오픈 ──
-const HALU_URL = 'http://134.185.114.30/taxai/halu';
+const HALU_URL = 'https://dctaxai.vercel.app/s1/halu';
 
 const $ = id => document.getElementById(id);
 const msgEl = $('msg');
@@ -331,15 +342,21 @@ document.querySelectorAll('[data-close-login]').forEach(b =>
 $('login').addEventListener('click', e => { if (e.target === $('login')) $('login').classList.remove('open'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('login').classList.remove('open'); });
 
-// 유효기한·지정서버 판정 — app.py supabase_login·_server_redirect 동일 로직
+// 유효기한·지정서버 판정 — app.py supabase_login·_server_redirect 동일 로직.
+// 매핑된 서버는 랜딩 프록시 경로(/sN/)로, 미매핑 호스트만 원 주소 유지(app.py와 동일 판정).
 function serverUrlOf(sv, uid) {
-  if (!sv || SUPER_IDS.has(uid)) return DEFAULT_SERVER;
+  const DEF = PROXY_PATHS['134.185.114.30'];
+  if (!sv || SUPER_IDS.has(uid)) return DEF;
   if (!/:\/\//.test(sv)) sv = 'http://' + sv;               // IP만 입력 → http 보장
-  try { const u = new URL(sv); if (!u.hostname) return DEFAULT_SERVER;
+  try { const u = new URL(sv); if (!u.hostname) return DEF;
+        let nl = (u.hostname + (u.port ? ':' + u.port : '')).toLowerCase();
+        if (u.protocol === 'http:' && nl.endsWith(':80')) nl = nl.slice(0, -3);      // :80 정규화(app.py 동일 — 분기 루프 방지)
+        if (u.protocol === 'https:' && nl.endsWith(':443')) nl = nl.slice(0, -4);
+        if (PROXY_PATHS[nl]) return PROXY_PATHS[nl];
         // app.py와 동일: 스킴 뒤에 경로가 있으면 그대로 유지(없으면 /taxai/ 추가)
         const pi = sv.indexOf('/', sv.indexOf('://') + 3);
         return pi > 0 ? (sv.endsWith('/') ? sv : sv + '/') : u.origin + '/taxai/';
-  } catch (e) { return DEFAULT_SERVER; }
+  } catch (e) { return DEF; }
 }
 
 async function validate(uid, pw) {
